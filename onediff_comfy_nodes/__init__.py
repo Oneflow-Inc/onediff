@@ -47,9 +47,10 @@ def lazy_load_extra_nodes():
         update_node_mappings(nodes_compare)
 
     if is_nexfort_available():
-        from .extras_nodes import nodes_nexfort_booster
+        from .extras_nodes import nodes_nexfort_booster, nodes_flux_speedup
 
         update_node_mappings(nodes_nexfort_booster)
+        update_node_mappings(nodes_flux_speedup)
 
     from .extras_nodes import nodes_prompt_styler
 
