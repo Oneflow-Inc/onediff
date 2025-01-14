@@ -107,7 +107,11 @@ class FakeCuda:
         )
         # (N, L, H x Ev) -> (N, H, L, Ev)
         value_embed_dim = value.shape[-1]
-        out = out.view(batch_size, target_seq_len, num_heads, value_embed_dim).permute(
+        # modified to support dynamic shape for onediff (view -> reshape)
+        # out = out.view(batch_size, target_seq_len, num_heads, value_embed_dim).permute(
+        #     0, 2, 1, 3
+        # )
+        out = out.reshape(batch_size, -1, num_heads, value_embed_dim).permute(
             0, 2, 1, 3
         )
         return out

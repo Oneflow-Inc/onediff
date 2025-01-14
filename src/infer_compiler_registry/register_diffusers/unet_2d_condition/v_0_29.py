@@ -1,43 +1,27 @@
-import importlib.metadata
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, Optional, Tuple, Union
 
 import oneflow as torch
 from onediff.infer_compiler.backends.oneflow.transform import transform_mgr
-from packaging import version
-
-diffusers_0210_v = version.parse("0.21.0")
-diffusers_0260_v = version.parse("0.26.0")
-diffusers_version = version.parse(importlib.metadata.version("diffusers"))
-diffusers_0270_v = version.parse("0.27.0")
 
 transformed_diffusers = transform_mgr.transform_package("diffusers")
-if diffusers_version < diffusers_0260_v:
-    UNet2DConditionOutput = (
-        transformed_diffusers.models.unet_2d_condition.UNet2DConditionOutput
-    )
-    proxy_UNet2DConditionModel = (
-        transformed_diffusers.models.unet_2d_condition.UNet2DConditionModel
-    )
-else:
-    UNet2DConditionOutput = (
-        transformed_diffusers.models.unets.unet_2d_condition.UNet2DConditionOutput
-    )
-    proxy_UNet2DConditionModel = (
-        transformed_diffusers.models.unets.unet_2d_condition.UNet2DConditionModel
-    )
-
-try:
-    USE_PEFT_BACKEND = transformed_diffusers.utils.USE_PEFT_BACKEND
-    scale_lora_layers = transformed_diffusers.utils.scale_lora_layers
-    unscale_lora_layers = transformed_diffusers.utils.unscale_lora_layers
-except Exception as e:
-    USE_PEFT_BACKEND = False
+UNet2DConditionOutput = (
+    transformed_diffusers.models.unets.unet_2d_condition.UNet2DConditionOutput
+)
+# try:
+#     USE_PEFT_BACKEND = transformed_diffusers.utils.USE_PEFT_BACKEND
+#     scale_lora_layers = transformed_diffusers.utils.scale_lora_layers
+#     unscale_lora_layers = transformed_diffusers.utils.unscale_lora_layers
+# except Exception as e:
+USE_PEFT_BACKEND = False
+proxy_UNet2DConditionModel = (
+    transformed_diffusers.models.unets.unet_2d_condition.UNet2DConditionModel
+)
 
 
 class UNet2DConditionModel(proxy_UNet2DConditionModel):
     def forward(
         self,
-        sample: torch.FloatTensor,
+        sample: torch.Tensor,
         timestep: Union[torch.Tensor, float, int],
         encoder_hidden_states: torch.Tensor,
         class_labels: Optional[torch.Tensor] = None,
@@ -55,10 +39,10 @@ class UNet2DConditionModel(proxy_UNet2DConditionModel):
         The [`UNet2DConditionModel`] forward method.
 
         Args:
-            sample (`torch.FloatTensor`):
+            sample (`torch.Tensor`):
                 The noisy input tensor with the following shape `(batch, channel, height, width)`.
-            timestep (`torch.FloatTensor` or `float` or `int`): The number of timesteps to denoise an input.
-            encoder_hidden_states (`torch.FloatTensor`):
+            timestep (`torch.Tensor` or `float` or `int`): The number of timesteps to denoise an input.
+            encoder_hidden_states (`torch.Tensor`):
                 The encoder hidden states with shape `(batch, sequence_length, feature_dim)`.
             class_labels (`torch.Tensor`, *optional*, defaults to `None`):
                 Optional class labels for conditioning. Their embeddings will be summed with the timestep embeddings.
@@ -80,30 +64,20 @@ class UNet2DConditionModel(proxy_UNet2DConditionModel):
                 A tuple of tensors that if specified are added to the residuals of down unet blocks.
             mid_block_additional_residual: (`torch.Tensor`, *optional*):
                 A tensor that if specified is added to the residual of the middle unet block.
+            down_intrablock_additional_residuals (`tuple` of `torch.Tensor`, *optional*):
+                additional residuals to be added within UNet down blocks, for example from T2I-Adapter side model(s)
             encoder_attention_mask (`torch.Tensor`):
                 A cross-attention mask of shape `(batch, sequence_length)` is applied to `encoder_hidden_states`. If
                 `True` the mask is kept, otherwise if `False` it is discarded. Mask will be converted into a bias,
                 which adds large negative values to the attention scores corresponding to "discard" tokens.
             return_dict (`bool`, *optional*, defaults to `True`):
-                Whether or not to return a [`~models.unet_2d_condition.UNet2DConditionOutput`] instead of a plain
+                Whether or not to return a [`~models.unets.unet_2d_condition.UNet2DConditionOutput`] instead of a plain
                 tuple.
-            cross_attention_kwargs (`dict`, *optional*):
-                A kwargs dictionary that if specified is passed along to the [`AttnProcessor`].
-            added_cond_kwargs: (`dict`, *optional*):
-                A kwargs dictionary containin additional embeddings that if specified are added to the embeddings that
-                are passed along to the UNet blocks.
-            down_block_additional_residuals (`tuple` of `torch.Tensor`, *optional*):
-                additional residuals to be added to UNet long skip connections from down blocks to up blocks for
-                example from ControlNet side model(s)
-            mid_block_additional_residual (`torch.Tensor`, *optional*):
-                additional residual to be added to UNet mid block output, for example from ControlNet side model
-            down_intrablock_additional_residuals (`tuple` of `torch.Tensor`, *optional*):
-                additional residuals to be added within UNet down blocks, for example from T2I-Adapter side model(s)
 
         Returns:
-            [`~models.unet_2d_condition.UNet2DConditionOutput`] or `tuple`:
-                If `return_dict` is True, an [`~models.unet_2d_condition.UNet2DConditionOutput`] is returned, otherwise
-                a `tuple` is returned where the first element is the sample tensor.
+            [`~models.unets.unet_2d_condition.UNet2DConditionOutput`] or `tuple`:
+                If `return_dict` is True, an [`~models.unets.unet_2d_condition.UNet2DConditionOutput`] is returned,
+                otherwise a `tuple` is returned where the first element is the sample tensor.
         """
         # By default samples have to be AT least a multiple of the overall upsampling factor.
         # The overall upsampling factor is equal to 2 ** (# num of upsampling layers).
@@ -112,8 +86,7 @@ class UNet2DConditionModel(proxy_UNet2DConditionModel):
         default_overall_up_factor = 2**self.num_upsamplers
 
         # upsample size should be forwarded when sample is not a multiple of `default_overall_up_factor`
-        # forward_upsample_size = False
-        # interpolate through upsample_size
+        # onediff modified here
         forward_upsample_size = True
         upsample_size = None
 
@@ -151,107 +124,24 @@ class UNet2DConditionModel(proxy_UNet2DConditionModel):
             sample = 2 * sample - 1.0
 
         # 1. time
-        timesteps = timestep
-        if not torch.is_tensor(timesteps):
-            # TODO: this requires sync between CPU and GPU. So try to pass timesteps as tensors if you can
-            # This would be a good case for the `match` statement (Python 3.10+)
-            is_mps = sample.device.type == "mps"
-            if isinstance(timestep, float):
-                dtype = torch.float32 if is_mps else torch.float64
-            else:
-                dtype = torch.int32 if is_mps else torch.int64
-            timesteps = torch.tensor([timesteps], dtype=dtype, device=sample.device)
-        elif len(timesteps.shape) == 0:
-            timesteps = timesteps[None].to(sample.device)
-
-        # broadcast to batch dimension in a way that's compatible with ONNX/Core ML
-        # modified to support dynamic shape for onediff
-        # timesteps = timesteps.expand(sample.shape[0])
-        timesteps = torch._C.broadcast_dim_like(timesteps, sample, dim=0)
-
-        t_emb = self.time_proj(timesteps)
-
-        # `Timesteps` does not contain any weights and will always return f32 tensors
-        # but time_embedding might actually be running in fp16. so we need to cast here.
-        # there might be better ways to encapsulate this.
-        t_emb = t_emb.to(dtype=sample.dtype)
-
+        t_emb = self.get_time_embed(sample=sample, timestep=timestep)
         emb = self.time_embedding(t_emb, timestep_cond)
         aug_emb = None
 
-        if self.class_embedding is not None:
-            if class_labels is None:
-                raise ValueError(
-                    "class_labels should be provided when num_class_embeds > 0"
-                )
-
-            if self.config.class_embed_type == "timestep":
-                class_labels = self.time_proj(class_labels)
-
-                # `Timesteps` does not contain any weights and will always return f32 tensors
-                # there might be better ways to encapsulate this.
-                class_labels = class_labels.to(dtype=sample.dtype)
-
-            class_emb = self.class_embedding(class_labels).to(dtype=sample.dtype)
-
+        class_emb = self.get_class_embed(sample=sample, class_labels=class_labels)
+        if class_emb is not None:
             if self.config.class_embeddings_concat:
                 emb = torch.cat([emb, class_emb], dim=-1)
             else:
                 emb = emb + class_emb
 
-        if self.config.addition_embed_type == "text":
-            aug_emb = self.add_embedding(encoder_hidden_states)
-        elif self.config.addition_embed_type == "text_image":
-            # Kandinsky 2.1 - style
-            if "image_embeds" not in added_cond_kwargs:
-                raise ValueError(
-                    f"{self.__class__} has the config param `addition_embed_type` set to 'text_image' which requires the keyword argument `image_embeds` to be passed in `added_cond_kwargs`"
-                )
-
-            image_embs = added_cond_kwargs.get("image_embeds")
-            text_embs = added_cond_kwargs.get("text_embeds", encoder_hidden_states)
-            aug_emb = self.add_embedding(text_embs, image_embs)
-        elif self.config.addition_embed_type == "text_time":
-            # SDXL - style
-            if "text_embeds" not in added_cond_kwargs:
-                raise ValueError(
-                    f"{self.__class__} has the config param `addition_embed_type` set to 'text_time' which requires the keyword argument `text_embeds` to be passed in `added_cond_kwargs`"
-                )
-            text_embeds = added_cond_kwargs.get("text_embeds")
-            if "time_ids" not in added_cond_kwargs:
-                raise ValueError(
-                    f"{self.__class__} has the config param `addition_embed_type` set to 'text_time' which requires the keyword argument `time_ids` to be passed in `added_cond_kwargs`"
-                )
-            time_ids = added_cond_kwargs.get("time_ids")
-            time_embeds = self.add_time_proj(time_ids.flatten())
-            # modified to support dynamic shape for onediff
-            # time_embeds = time_embeds.reshape((text_embeds.shape[0], -1))
-            time_embeds = time_embeds.unflatten(
-                dim=0, shape=(-1, time_ids.shape[1])
-            ).flatten(1, 2)
-            add_embeds = torch.concat([text_embeds, time_embeds], dim=-1)
-            add_embeds = add_embeds.to(emb.dtype)
-            aug_emb = self.add_embedding(add_embeds)
-        elif self.config.addition_embed_type == "image":
-            # Kandinsky 2.2 - style
-            if "image_embeds" not in added_cond_kwargs:
-                raise ValueError(
-                    f"{self.__class__} has the config param `addition_embed_type` set to 'image' which requires the keyword argument `image_embeds` to be passed in `added_cond_kwargs`"
-                )
-            image_embs = added_cond_kwargs.get("image_embeds")
-            aug_emb = self.add_embedding(image_embs)
-        elif self.config.addition_embed_type == "image_hint":
-            # Kandinsky 2.2 - style
-            if (
-                "image_embeds" not in added_cond_kwargs
-                or "hint" not in added_cond_kwargs
-            ):
-                raise ValueError(
-                    f"{self.__class__} has the config param `addition_embed_type` set to 'image_hint' which requires the keyword arguments `image_embeds` and `hint` to be passed in `added_cond_kwargs`"
-                )
-            image_embs = added_cond_kwargs.get("image_embeds")
-            hint = added_cond_kwargs.get("hint")
-            aug_emb, hint = self.add_embedding(image_embs, hint)
+        aug_emb = self.get_aug_embed(
+            emb=emb,
+            encoder_hidden_states=encoder_hidden_states,
+            added_cond_kwargs=added_cond_kwargs,
+        )
+        if self.config.addition_embed_type == "image_hint":
+            aug_emb, hint = aug_emb
             sample = torch.cat([sample, hint], dim=1)
 
         emb = emb + aug_emb if aug_emb is not None else emb
@@ -259,55 +149,10 @@ class UNet2DConditionModel(proxy_UNet2DConditionModel):
         if self.time_embed_act is not None:
             emb = self.time_embed_act(emb)
 
-        if (
-            self.encoder_hid_proj is not None
-            and self.config.encoder_hid_dim_type == "text_proj"
-        ):
-            encoder_hidden_states = self.encoder_hid_proj(encoder_hidden_states)
-        elif (
-            self.encoder_hid_proj is not None
-            and self.config.encoder_hid_dim_type == "text_image_proj"
-        ):
-            # Kadinsky 2.1 - style
-            if "image_embeds" not in added_cond_kwargs:
-                raise ValueError(
-                    f"{self.__class__} has the config param `encoder_hid_dim_type` set to 'text_image_proj' which requires the keyword argument `image_embeds` to be passed in  `added_conditions`"
-                )
-
-            image_embeds = added_cond_kwargs.get("image_embeds")
-            encoder_hidden_states = self.encoder_hid_proj(
-                encoder_hidden_states, image_embeds
-            )
-        elif (
-            self.encoder_hid_proj is not None
-            and self.config.encoder_hid_dim_type == "image_proj"
-        ):
-            # Kandinsky 2.2 - style
-            if "image_embeds" not in added_cond_kwargs:
-                raise ValueError(
-                    f"{self.__class__} has the config param `encoder_hid_dim_type` set to 'image_proj' which requires the keyword argument `image_embeds` to be passed in  `added_conditions`"
-                )
-            image_embeds = added_cond_kwargs.get("image_embeds")
-            encoder_hidden_states = self.encoder_hid_proj(image_embeds)
-        elif (
-            self.encoder_hid_proj is not None
-            and self.config.encoder_hid_dim_type == "ip_image_proj"
-        ):
-            if "image_embeds" not in added_cond_kwargs:
-                raise ValueError(
-                    f"{self.__class__} has the config param `encoder_hid_dim_type` set to 'ip_image_proj' which requires the keyword argument `image_embeds` to be passed in  `added_conditions`"
-                )
-            image_embeds = added_cond_kwargs.get("image_embeds")
-            if diffusers_version < diffusers_0270_v:
-                image_embeds = self.encoder_hid_proj(image_embeds).to(
-                    encoder_hidden_states.dtype
-                )
-                encoder_hidden_states = torch.cat(
-                    [encoder_hidden_states, image_embeds], dim=1
-                )
-            else:
-                image_embeds = self.encoder_hid_proj(image_embeds)
-                encoder_hidden_states = (encoder_hidden_states, image_embeds)
+        encoder_hidden_states = self.process_encoder_hidden_states(
+            encoder_hidden_states=encoder_hidden_states,
+            added_cond_kwargs=added_cond_kwargs,
+        )
 
         # 2. pre-process
         sample = self.conv_in(sample)
@@ -324,11 +169,14 @@ class UNet2DConditionModel(proxy_UNet2DConditionModel):
             }
 
         # 3. down
-        lora_scale = (
-            cross_attention_kwargs.get("scale", 1.0)
-            if cross_attention_kwargs is not None
-            else 1.0
-        )
+        # we're popping the `scale` instead of getting it because otherwise `scale` will be propagated
+        # to the internal blocks and will raise deprecation warnings. this will be confusing for our users.
+        if cross_attention_kwargs is not None:
+            cross_attention_kwargs = cross_attention_kwargs.copy()
+            lora_scale = cross_attention_kwargs.pop("scale", 1.0)
+        else:
+            lora_scale = 1.0
+
         if USE_PEFT_BACKEND:
             # weight the lora layers by setting `lora_scale` for each PEFT layer
             scale_lora_layers(self, lora_scale)
@@ -381,14 +229,7 @@ class UNet2DConditionModel(proxy_UNet2DConditionModel):
                     **additional_residuals,
                 )
             else:
-                if diffusers_version < diffusers_0210_v:
-                    sample, res_samples = downsample_block(
-                        hidden_states=sample, temb=emb
-                    )
-                else:
-                    sample, res_samples = downsample_block(
-                        hidden_states=sample, temb=emb, scale=lora_scale
-                    )
+                sample, res_samples = downsample_block(hidden_states=sample, temb=emb)
                 if is_adapter and len(down_intrablock_additional_residuals) > 0:
                     sample += down_intrablock_additional_residuals.pop(0)
 
@@ -449,12 +290,7 @@ class UNet2DConditionModel(proxy_UNet2DConditionModel):
             # if we have not reached the final block and need to forward the
             # upsample size, we do it here
             if not is_final_block and forward_upsample_size:
-                # To support dynamic switching of special resolutions, pass a like tensor.
                 upsample_size = down_block_res_samples[-1].shape[2:]
-
-            output_like = None
-            if not is_final_block:
-                output_like = down_block_res_samples[-1]
 
             if (
                 hasattr(upsample_block, "has_cross_attention")
@@ -467,28 +303,16 @@ class UNet2DConditionModel(proxy_UNet2DConditionModel):
                     encoder_hidden_states=encoder_hidden_states,
                     cross_attention_kwargs=cross_attention_kwargs,
                     upsample_size=upsample_size,
-                    output_like=output_like,
                     attention_mask=attention_mask,
                     encoder_attention_mask=encoder_attention_mask,
                 )
             else:
-                if diffusers_version < diffusers_0210_v:
-                    sample = upsample_block(
-                        hidden_states=sample,
-                        temb=emb,
-                        res_hidden_states_tuple=res_samples,
-                        upsample_size=upsample_size,
-                        output_like=output_like,
-                    )
-                else:
-                    sample = upsample_block(
-                        hidden_states=sample,
-                        temb=emb,
-                        res_hidden_states_tuple=res_samples,
-                        upsample_size=upsample_size,
-                        output_like=output_like,
-                        scale=lora_scale,
-                    )
+                sample = upsample_block(
+                    hidden_states=sample,
+                    temb=emb,
+                    res_hidden_states_tuple=res_samples,
+                    upsample_size=upsample_size,
+                )
 
         # 6. post-process
         if self.conv_norm_out:
@@ -505,11 +329,140 @@ class UNet2DConditionModel(proxy_UNet2DConditionModel):
 
         return UNet2DConditionOutput(sample=sample)
 
+    def get_time_embed(
+        self, sample: torch.Tensor, timestep: Union[torch.Tensor, float, int]
+    ) -> Optional[torch.Tensor]:
+        timesteps = timestep
+        if not torch.is_tensor(timesteps):
+            # TODO: this requires sync between CPU and GPU. So try to pass timesteps as tensors if you can
+            # This would be a good case for the `match` statement (Python 3.10+)
+            is_mps = sample.device.type == "mps"
+            if isinstance(timestep, float):
+                dtype = torch.float32 if is_mps else torch.float64
+            else:
+                dtype = torch.int32 if is_mps else torch.int64
+            timesteps = torch.tensor([timesteps], dtype=dtype, device=sample.device)
+        elif len(timesteps.shape) == 0:
+            timesteps = timesteps[None].to(sample.device)
 
-if diffusers_version < diffusers_0270_v:
-    UNet2DConditionModel = (
-        transformed_diffusers.models.unet_2d_condition.UNet2DConditionModel
-    )
-# TODO(Wangyi): concat op bug here
-# elif diffusers_version >= version.parse("0.29.0"):
-#     from .unet_2d_condition.v_0_29 import UNet2DConditionModel, UNet2DConditionOutput
+        # broadcast to batch dimension in a way that's compatible with ONNX/Core ML
+        # modified to support dynamic shape for onediff
+        # timesteps = timesteps.expand(sample.shape[0])
+        timesteps = torch._C.broadcast_dim_like(timesteps, sample, dim=0)
+
+        t_emb = self.time_proj(timesteps)
+        # `Timesteps` does not contain any weights and will always return f32 tensors
+        # but time_embedding might actually be running in fp16. so we need to cast here.
+        # there might be better ways to encapsulate this.
+        t_emb = t_emb.to(dtype=sample.dtype)
+        return t_emb
+
+    def get_aug_embed(
+        self,
+        emb: torch.Tensor,
+        encoder_hidden_states: torch.Tensor,
+        added_cond_kwargs: Dict[str, Any],
+    ) -> Optional[torch.Tensor]:
+        aug_emb = None
+        if self.config.addition_embed_type == "text":
+            aug_emb = self.add_embedding(encoder_hidden_states)
+        elif self.config.addition_embed_type == "text_image":
+            # Kandinsky 2.1 - style
+            if "image_embeds" not in added_cond_kwargs:
+                raise ValueError(
+                    f"{self.__class__} has the config param `addition_embed_type` set to 'text_image' which requires the keyword argument `image_embeds` to be passed in `added_cond_kwargs`"
+                )
+
+            image_embs = added_cond_kwargs.get("image_embeds")
+            text_embs = added_cond_kwargs.get("text_embeds", encoder_hidden_states)
+            aug_emb = self.add_embedding(text_embs, image_embs)
+        elif self.config.addition_embed_type == "text_time":
+            # SDXL - style
+            if "text_embeds" not in added_cond_kwargs:
+                raise ValueError(
+                    f"{self.__class__} has the config param `addition_embed_type` set to 'text_time' which requires the keyword argument `text_embeds` to be passed in `added_cond_kwargs`"
+                )
+            text_embeds = added_cond_kwargs.get("text_embeds")
+            if "time_ids" not in added_cond_kwargs:
+                raise ValueError(
+                    f"{self.__class__} has the config param `addition_embed_type` set to 'text_time' which requires the keyword argument `time_ids` to be passed in `added_cond_kwargs`"
+                )
+            time_ids = added_cond_kwargs.get("time_ids")
+            time_embeds = self.add_time_proj(time_ids.flatten())
+            # modified to support dynamic shape for onediff
+            # time_embeds = time_embeds.reshape((text_embeds.shape[0], -1))
+            time_embeds = time_embeds.unflatten(
+                dim=0, shape=(-1, time_ids.shape[1])
+            ).flatten(1, 2)
+            add_embeds = torch.concat([text_embeds, time_embeds], dim=-1)
+            add_embeds = add_embeds.to(emb.dtype)
+            aug_emb = self.add_embedding(add_embeds)
+        elif self.config.addition_embed_type == "image":
+            # Kandinsky 2.2 - style
+            if "image_embeds" not in added_cond_kwargs:
+                raise ValueError(
+                    f"{self.__class__} has the config param `addition_embed_type` set to 'image' which requires the keyword argument `image_embeds` to be passed in `added_cond_kwargs`"
+                )
+            image_embs = added_cond_kwargs.get("image_embeds")
+            aug_emb = self.add_embedding(image_embs)
+        elif self.config.addition_embed_type == "image_hint":
+            # Kandinsky 2.2 - style
+            if (
+                "image_embeds" not in added_cond_kwargs
+                or "hint" not in added_cond_kwargs
+            ):
+                raise ValueError(
+                    f"{self.__class__} has the config param `addition_embed_type` set to 'image_hint' which requires the keyword arguments `image_embeds` and `hint` to be passed in `added_cond_kwargs`"
+                )
+            image_embs = added_cond_kwargs.get("image_embeds")
+            hint = added_cond_kwargs.get("hint")
+            aug_emb = self.add_embedding(image_embs, hint)
+        return aug_emb
+
+    def process_encoder_hidden_states(
+        self, encoder_hidden_states: torch.Tensor, added_cond_kwargs: Dict[str, Any]
+    ) -> torch.Tensor:
+        if (
+            self.encoder_hid_proj is not None
+            and self.config.encoder_hid_dim_type == "text_proj"
+        ):
+            encoder_hidden_states = self.encoder_hid_proj(encoder_hidden_states)
+        elif (
+            self.encoder_hid_proj is not None
+            and self.config.encoder_hid_dim_type == "text_image_proj"
+        ):
+            # Kandinsky 2.1 - style
+            if "image_embeds" not in added_cond_kwargs:
+                raise ValueError(
+                    f"{self.__class__} has the config param `encoder_hid_dim_type` set to 'text_image_proj' which requires the keyword argument `image_embeds` to be passed in  `added_conditions`"
+                )
+
+            image_embeds = added_cond_kwargs.get("image_embeds")
+            encoder_hidden_states = self.encoder_hid_proj(
+                encoder_hidden_states, image_embeds
+            )
+        elif (
+            self.encoder_hid_proj is not None
+            and self.config.encoder_hid_dim_type == "image_proj"
+        ):
+            # Kandinsky 2.2 - style
+            if "image_embeds" not in added_cond_kwargs:
+                raise ValueError(
+                    f"{self.__class__} has the config param `encoder_hid_dim_type` set to 'image_proj' which requires the keyword argument `image_embeds` to be passed in  `added_conditions`"
+                )
+            image_embeds = added_cond_kwargs.get("image_embeds")
+            encoder_hidden_states = self.encoder_hid_proj(image_embeds)
+        elif (
+            self.encoder_hid_proj is not None
+            and self.config.encoder_hid_dim_type == "ip_image_proj"
+        ):
+            if "image_embeds" not in added_cond_kwargs:
+                raise ValueError(
+                    f"{self.__class__} has the config param `encoder_hid_dim_type` set to 'ip_image_proj' which requires the keyword argument `image_embeds` to be passed in  `added_conditions`"
+                )
+            image_embeds = added_cond_kwargs.get("image_embeds")
+            image_embeds = self.encoder_hid_proj(image_embeds)
+            # modified by onediff
+            # encoder_hidden_states = torch.cat([encoder_hidden_states, image_embeds], dim=1)
+            encoder_hidden_states = (encoder_hidden_states, image_embeds)
+        return encoder_hidden_states
