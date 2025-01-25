@@ -19,12 +19,17 @@ class BasicNexFortBoosterExecutor(BoosterExecutor):
     def __init__(
         self,
         mode: str = "max-optimize:max-autotune:low-precision",
+        option: str ="",
         fullgraph=False,
         dynamic=True,
     ):
         super().__init__()
+        if isinstance(option, str):
+            import json
+            option = json.loads(option)
         options = {
             "mode": mode,
+            "options": option,
             "dynamic": dynamic,
             "fullgraph": fullgraph,
         }

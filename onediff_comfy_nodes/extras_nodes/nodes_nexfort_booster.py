@@ -18,6 +18,12 @@ compiler_modes = collections.OrderedDict(
         "max-optimize:max-autotune:benchmark:low-precision:freezing:cudagraphs": "This is the most aggressive combination of compiler modes. It will deliver the best performance but might slow down the compilation significantly.",
     }
 )
+options = collections.OrderedDict(
+    {
+        '{"inductor.optimize_linear_epilogue": false}': "",
+        '{"triton.fuse_attention_allow_fp16_reduction": false, "inductor.optimize_linear_epilogue": false}': "",
+    }
+)
 
 
 class OneDiffNexfortBooster:
@@ -28,6 +34,7 @@ class OneDiffNexfortBooster:
                 "fullgraph": ([False, True],),
                 "dynamic": ([True, False],),
                 "mode": ([mode for mode in compiler_modes.keys()],),
+                "option": ([option for option in options.keys()],),
                 "docs_link": (
                     "STRING",
                     {
@@ -47,11 +54,12 @@ class OneDiffNexfortBooster:
         fullgraph=False,
         dynamic=None,
         mode="max-autotune:cudagraphs",
+        option="",
         docs_link=None,
     ):
         return (
             BasicNexFortBoosterExecutor(
-                fullgraph=fullgraph, mode=f"{mode}:cache-all", dynamic=dynamic
+                fullgraph=fullgraph, mode=f"{mode}:cache-all", option=option, dynamic=dynamic
             ),
         )
 
