@@ -1,4 +1,7 @@
 import torch
+
+import onediff_shared
+
 from compile.utils import is_oneflow_backend
 
 from onediff.infer_compiler import DeployableModule
@@ -36,8 +39,9 @@ def hijacked_activate(activate_func):
 
     def activate(self, p, params_list):
         activate_func(self, p, params_list)
-        if isinstance(p.sd_model.model.diffusion_model, DeployableModule):
-            onediff_sd_model: DeployableModule = p.sd_model.model.diffusion_model
+        sd_model = onediff_shared.current_unet_graph.graph_module
+        if isinstance(sd_model, DeployableModule):
+            onediff_sd_model: DeployableModule = sd_model
             for name, sub_module in onediff_sd_model.named_modules():
                 if not isinstance(
                     sub_module,
