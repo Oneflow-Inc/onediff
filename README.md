@@ -113,8 +113,10 @@ We also maintain a repository for benchmarking the quality of generation after a
 
 #### 1. Install torch and diffusers
 **Note: You can choose the latest versions you want for diffusers or transformers.**
+
+You can visit the official [PyTorch website](https://pytorch.org/get-started/locally/) to select the appropriate torch version compatible with your CUDA installation. The website provides specific installation instructions tailored to your system configuration.
 ```
-python3 -m pip install "torch" "transformers==4.27.1" "diffusers[torch]==0.19.3"
+python3 -m pip install "transformers==4.40.1" "diffusers==0.27.2"
 ```
 
 #### 2. Install a compiler backend
