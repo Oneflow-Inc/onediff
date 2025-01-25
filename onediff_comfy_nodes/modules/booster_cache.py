@@ -5,9 +5,6 @@ import torch
 from comfy.model_patcher import ModelPatcher
 from comfy.sd import VAE
 from onediff.torch_utils.module_operations import get_sub_module
-from onediff.utils.import_utils import is_oneflow_available
-
-from .._config import is_disable_oneflow_backend
 
 
 @singledispatch
@@ -54,14 +51,17 @@ def _(model: ModelPatcher):
 
 @get_cached_model.register
 def _(model: VAE):
-    if is_oneflow_available() and not is_disable_oneflow_backend():
-        from .oneflow.utils.booster_utils import is_using_oneflow_backend
+    # from onediff.utils.import_utils import is_oneflow_available
+    # from .._config import is_disable_oneflow_backend
+    # if is_oneflow_available() and not is_disable_oneflow_backend():
+    #     from .oneflow.utils.booster_utils import is_using_oneflow_backend
 
-        if is_using_oneflow_backend(model):
-            return None
+    #     if is_using_oneflow_backend(model):
+    #         return None
 
-    # TODO(TEST) if support cache
-    return model.first_stage_model
+    # # TODO(TEST) if support cache
+    # # return model.first_stage_model
+    return None
 
 
 class BoosterCacheService:

@@ -1,4 +1,5 @@
 import os
+import warnings
 from dataclasses import dataclass
 from functools import partial, singledispatchmethod
 from typing import Any, Dict, Optional, Union
@@ -7,6 +8,7 @@ import torch
 import torch.nn as nn
 from comfy.controlnet import ControlNet
 from comfy.model_patcher import ModelPatcher
+from comfy.sd import VAE
 from onediff.infer_compiler import oneflow_compile
 from onediff.infer_compiler.backends.oneflow import (
     OneflowDeployableModule as DeployableModule,
@@ -124,6 +126,17 @@ class OnelineQuantizationBoosterExecutor(BoosterExecutor):
     @singledispatchmethod
     def extract_torch_module(self, model):
         raise NotImplementedError(f"{type(model)}")
+
+    @execute.register(VAE)
+    def _(self, model: VAE, **kwargs):
+        # TODO: VAE does not support quantization and patch compatibility
+        from .booster_basic import BasicOneFlowBoosterExecutor
+
+        warnings.warn(
+            "TODO: VAE does not support quantization and patch compatibility",
+            UserWarning,
+        )
+        return BasicOneFlowBoosterExecutor().execute(model, **kwargs)
 
     @execute.register(ModelPatcher)
     @execute.register(ControlNet)
