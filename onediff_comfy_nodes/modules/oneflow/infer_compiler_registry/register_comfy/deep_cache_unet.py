@@ -121,7 +121,7 @@ class DeepCacheUNet(Module):
             h = torch.cat([h, hsp], dim=1)
             del hsp
             if len(hs) > 0:
-                output_shape = hs[-1].shape
+                output_shape = hs[-1]
             else:
                 output_shape = None
             h = forward_timestep_embed(
@@ -248,7 +248,7 @@ class FastDeepCacheUNet(Module):
             h = torch.cat([h, hsp], dim=1)
             del hsp
             if len(hs) > 0:
-                output_shape = hs[-1].shape
+                output_shape = hs[-1]
             else:
                 output_shape = None
             h = forward_timestep_embed(
