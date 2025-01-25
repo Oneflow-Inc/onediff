@@ -13,6 +13,16 @@
 
 ## Environment setup
 ### Set up Latte
+
+#### From HF diffusers
+Note: HF diffusers has bug on LattePipeline on 20240723
+Reference: https://huggingface.co/docs/diffusers/main/en/api/pipelines/latte
+```bash
+# make sure LattePipeline avaliable in HF diffusers(diffusers version >= 0.30)
+pip install git+https://github.com/huggingface/diffusers.git@main
+```
+
+#### (Optional)From latte project
 HF model: https://huggingface.co/maxin-cn/Latte-1
 ```bash
 git clone -b run https://github.com/siliconflow/dit_latte/
@@ -59,18 +69,18 @@ python3 ./benchmarks/text_to_video_latte.py \
 ### Metric
 
 #### On A100
-| Metric                                           | NVIDIA A100-PCIE-40GB (512 * 512) |
-| ------------------------------------------------ | --------------------------------- |
-| Data update date(yyyy-mm-dd)                     | 2024-06-19                        |
-| PyTorch iteration speed                          | 1.60 it/s                         |
-| OneDiff iteration speed                          | 2.27 it/s(+41.9%)                 |
-| PyTorch E2E time                                 | 32.618 s                          |
-| OneDiff E2E time                                 | 22.601 s(-30.7%)                  |
-| PyTorch Max Mem Used                             | 19.9 GiB                          |
-| OneDiff Max Mem Used                             | 19.9 GiB                          |
-| PyTorch Warmup with Run time                     | 33.291 s                          |
-| OneDiff Warmup with Compilation time<sup>1</sup> | 572.877 s                         |
-| OneDiff Warmup with Cache time                   | 148.068 s                         |
+| Metric                                           | NVIDIA A100-PCIE-40GB (512 * 512) | NVIDIA A100-PCIE-40GB(512 * 512)  by strint on ubuntu22 |
+| ------------------------------------------------ | --------------------------------- | ------------------------------------------------------- |
+| Data update date(yyyy-mm-dd)                     | 2024-06-19                        | 2024-07-23                                              |
+| PyTorch iteration speed                          | 1.60 it/s                         | 1.6 it/s                                                |
+| OneDiff iteration speed                          | 2.27 it/s(+41.9%)                 | 1.723 it/s                                              |
+| PyTorch E2E time                                 | 32.618 s                          | 32.497 s                                                |
+| OneDiff E2E time                                 | 22.601 s(-30.7%)                  | 29.64 s                                                 |
+| PyTorch Max Mem Used                             | 19.9 GiB                          | 19.92 GiB                                               |
+| OneDiff Max Mem Used                             | 19.9 GiB                          | 19.9 GiB                                                |
+| PyTorch Warmup with Run time                     | 33.291 s                          | 33.129 s                                                |
+| OneDiff Warmup with Compilation time<sup>1</sup> | 572.877 s                         | 737.6 s                                                 |
+| OneDiff Warmup with Cache time                   | 148.068 s                         | 159 s                                                   |
 
  <sup>1</sup> OneDiff Warmup with Compilation time is tested on Intel(R) Xeon(R) Gold 6348 CPU @ 2.60GHz. Note this is just for reference, and it varies a lot on different CPU.
 
