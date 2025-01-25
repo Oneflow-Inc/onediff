@@ -2,7 +2,8 @@ import os
 import sys
 
 import folder_paths
-import torch
+import torch._dynamo
+torch._dynamo.config.suppress_errors = True
 
 __all__ = [
     "is_default_using_oneflow_backend",

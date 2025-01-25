@@ -220,3 +220,33 @@ def _(workflow_path, *args, **kwargs):
             graph.graph["12"]["inputs"]["image"] = face_img
             graph.graph["48"]["inputs"]["image"] = pose_img
             yield InputParams(graph=graph)
+
+
+@register_generator(
+    [
+        f"{WORKFLOW_DIR}/baseline/flux1-schnell.json",
+        f"{WORKFLOW_DIR}/nexfort/flux1-schnell.json",
+    ]
+)
+def _(workflow_path, *args, **kwargs):
+    with open(workflow_path, "r") as fp:
+        workflow = json.load(fp)
+    graph = ComfyGraph(graph=workflow, sampler_nodes=["13"])
+    texts = read_prompts()
+    resolutions_and_ratios = [
+        (1024, 1024, "1:1 Square"),
+        (1152, 896, "9:7"),
+        (896, 1152, "7:9"),
+        (1216, 832, "19:13"),
+        (832, 1216, "13:19"),
+        (1344, 768, "7:4 Horizontal"),
+        (768, 1344, "4:7 Vertical"),
+        (1536, 640, "12:5 Horizontal"),
+        (640, 1536, "5:12 Vertical, the closest to the iPhone resolution")
+    ]
+    for height, width, _ in resolutions_and_ratios:
+        for batch_size in [1,2]:
+            for text in texts[-5:]:
+                graph.graph["6"]["inputs"]["text"] = text
+                graph.set_image_size(height=height, width=width, batch_size=batch_size)
+                yield InputParams(graph=graph)
